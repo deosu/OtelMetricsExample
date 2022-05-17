@@ -2,9 +2,11 @@ package com.vmware.otel;
 
 import java.time.Duration;
 
+import io.grpc.ManagedChannel;
+import io.grpc.okhttp.OkHttpChannelBuilder;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.LongHistogram;
-import io.opentelemetry.exporters.otlp.OtlpGrpcMetricExporter;
+import io.opentelemetry.exporter.otlp.metrics.OtlpGrpcMetricExporter;
 import io.opentelemetry.sdk.metrics.InstrumentSelector;
 import io.opentelemetry.sdk.metrics.InstrumentType;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
@@ -23,8 +25,9 @@ public class Application {
   private static final Resource RESOURCE =
       Resource.create(Attributes.of(stringKey("resource_key"), "resource_value"));
   public static void main(String[] args) {
+    ManagedChannel managedChannel = managedChannel();
     OtlpGrpcMetricExporter metricExporter =
-        OtlpGrpcMetricExporter.newBuilder().setEndpoint("http://localhost:4317").build();
+        OtlpGrpcMetricExporter.builder().setChannel(managedChannel).build();
 
     MetricReader periodicReader =
         PeriodicMetricReader.builder(metricExporter).setInterval(Duration.ofMillis(1000)).build();
@@ -51,5 +54,9 @@ public class Application {
     longHistogram.record(12L, Attributes.builder().put("key", "value").build());
     longHistogram.record(12L);
     longHistogram.record(13L);
+  }
+
+  private static ManagedChannel managedChannel() {
+    return OkHttpChannelBuilder.forAddress("localhost", 4317).usePlaintext().build();
   }
 }
